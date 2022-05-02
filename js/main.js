@@ -13,6 +13,22 @@ renderer.domElement.style.zIndex = "-1";
 
 document.body.appendChild(renderer.domElement);
 
+
+// Light
+const light = new THREE.DirectionalLight(0xffaaaa, 2.5);
+light.position.set(1.0, 1.0, 1.0);
+light.target.position.set(-1.0, 0.0, -1.0);
+light.castShadow = true;
+
+// scene.add(light.target);
+
+scene.add(light);
+
+// light.shadow.mapSize.width = 512;
+// light.shadow.mapSize.height = 512;
+// light.shadow.camera.near = 0.5;
+// light.shadow.camera.far = 500;
+
 // Generating geometry
 
 const geo = new THREE.BufferGeometry();
@@ -60,9 +76,10 @@ geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
 geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
 geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 
-const mat = new THREE.MeshBasicMaterial( {
+const mat = new THREE.MeshStandardMaterial( {
     side: THREE.DoubleSide,
-    vertexColors: true
+    vertexColors: true,
+    flatShading: true
 });
 
 // Mesh - Scene Component
@@ -74,14 +91,6 @@ mesh.castShadow = true;
 mesh.receiveShadow = true;
 
 scene.add(mesh);
-
-// Light
-const light = new THREE.DirectionalLight(0xffffff, 0.5);
-light.position.x = 1;
-light.position.y = 0.5;
-light.position.z = 0.5;
-light.castShadow = true;
-scene.add(light);
 
 // Constants
 

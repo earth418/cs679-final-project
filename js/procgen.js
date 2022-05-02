@@ -101,7 +101,7 @@ function getProcGenData(size, scale, func)
         }
     }
 
-    verts = erode(verts, normals, size * scale, 50000, 0.03, 0.05, 0.5);
+    // verts = erode(verts, normals, size * scale, 50000, 0.03, 0.05, 0.5);
 
     return [verts, tris, colors, normals];
 }
