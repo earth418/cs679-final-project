@@ -4,9 +4,10 @@ function lerpColors(a, b, alpha) {
 }
 
 function colorFromPoint(z, zmax) {
-    const bot = new THREE.Color(0.0, 0.5, 0.0);
-    const top = new THREE.Color(0.8, 0.8, 0.8);
-    const v = lerpColors(bot, top, z / zmax);
+    // const bot = new THREE.Color(0.0, 0.5, 0.0);
+    // const top = new THREE.Color(0.8, 0.8, 0.8);
+    // const v = lerpColors(bot, top, z / zmax);
+    const v = new THREE.Color(0.8, 0.7, 0.6);
     
     return v;
 }

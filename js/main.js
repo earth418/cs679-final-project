@@ -15,7 +15,7 @@ document.body.appendChild(renderer.domElement);
 
 
 // Light
-const light = new THREE.DirectionalLight(0xffaaaa, 2.5);
+const light = new THREE.DirectionalLight(0xffaaaa, 1);
 light.position.set(1.0, 1.0, 1.0);
 light.target.position.set(-1.0, 0.0, -1.0);
 light.castShadow = true;
@@ -65,16 +65,23 @@ noiseFunc = function(x, y, hscale, fscale) {
     return [noise * hscale, hscale * hmax];
 }
 
-data = getProcGenData(size, scale, noiseFunc);
-verts = data[0];
+sandGen = function(x, y, hscale, fscale) {
+    return [simplex.noise2D(x * fscale, y * fscale) * hscale, hscale];
+}
+
+// data = getProcGenData(size, scale, noiseFunc);
+data = getProcGenData(size, scale, sandGen);
+verts = new Float32Array(data[0]);
 tris = data[1];
-colors = data[2];
-normals = data[3];
+colors = new Float32Array(data[2]);
+normals = new Float32Array(data[3]);
 
 geo.setIndex(tris);
-geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+geo.getAttribute('position').needsUpdate = true;
+geo.getAttribute('normal').needsUpdate = true;
 
 const mat = new THREE.MeshStandardMaterial( {
     side: THREE.DoubleSide,
@@ -101,8 +108,14 @@ let ogMouseY = 0;
 let mouseX = 0.0;
 let mouseY = 0.0;
 const speed = 0.2;
-const sensitivity = 1.0 / Math.min(window.innerHeight, window.innerWidth);
+const sensitivity = 0.025 / Math.min(window.innerHeight, window.innerWidth);
+// mesh.geometry.attributes.position.needsUpdate = true;
+// mesh.geometry.attributes.normals.needsUpdate = true;
 
+let simulate = false;
+let iterations = 0;
+let phi = 0;
+let theta = 135;
 
 function anim() {
     requestAnimationFrame(anim);
@@ -112,12 +125,18 @@ function anim() {
     // let v = new THREE.Vector3();
     // camera.getWorldDirection(v);
     
+
     if (mouseMove) {
-        camera.rotation.y += (mouseX - ogMouseX) * sensitivity;
-        camera.rotation.x += (mouseY - ogMouseY) * sensitivity;
+        // camera.rotation.y += (mouseX - ogMouseX) * sensitivity;
+        // camera.rotation.x += (mouseY - ogMouseY) * sensitivity * 0.5;
+        theta += (mouseX - ogMouseX) * sensitivity;
+        phi += (mouseY - ogMouseY) * sensitivity * 0.5;
     }
-    ogMouseX = mouseX;
-    ogMouseY = mouseY;
+    // ogMouseX = mouseX;
+    // ogMouseY = mouseY;
+    let targetPos = new THREE.Vector3();
+    targetPos.setFromSphericalCoords(1, 90 - phi, theta).add(camera.position);
+    camera.lookAt(targetPos);
 
     // light.position.x += 0.1;
 
@@ -128,6 +147,21 @@ function anim() {
     // dp = dp.multiply(mov);
     camera.position.add(dp);
 
+    if (simulate && iterations % 15 == 0) {
+
+        console.log("Simulating...");
+
+        // let poss = mesh.geometry.getAttribute('position').array;
+        // let norms = mesh.geometry.getAttribute('normal').array;
+        // let poss = mesh.geometry.attributes.position.array;
+        // let norms = mesh.geometry.attributes.normal.array;
+        Simulate(size, verts, normals, 1, 0.1);
+
+        mesh.geometry.attributes.position.needsUpdate = true;
+        mesh.geometry.attributes.normal.needsUpdate = true;
+    }
+
+    ++iterations;
     renderer.render(scene, camera);
 }
 
@@ -154,11 +188,14 @@ function keyPress(event, key_down) {
         case "d":
             mov.x = sc;
             break;
-        case " ":
+        case "e":
             mov.y = sc;
             break;
-        case "Shift":
+        case "q":
             mov.y = -sc;
+            break;
+        case " ":
+            simulate = key_down;
             break;
     }
 
