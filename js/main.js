@@ -33,7 +33,7 @@ scene.add(light);
 
 const geo = new THREE.BufferGeometry();
 
-let size = 100;
+let size = 250;
 let scale = 2.0;
 
 const simplex = new SimplexNoise();
@@ -65,8 +65,12 @@ noiseFunc = function(x, y, hscale, fscale) {
     return [noise * hscale, hscale * hmax];
 }
 
+function GetBedrock(a, b) {
+	return 5 * (1 + simplex.noise2D(3.2 + 0.01 * a, 0.3 - 0.01 * b));
+}
+
 sandGen = function(x, y, hscale, fscale) {
-    return [simplex.noise2D(x * fscale, y * fscale) * hscale, hscale];
+    return [5 * (1 + simplex.noise2D(x * fscale, y * fscale)) + GetBedrock(x, y), 10];
 }
 
 // data = getProcGenData(size, scale, noiseFunc);
@@ -108,7 +112,7 @@ let ogMouseY = 0;
 let mouseX = 0.0;
 let mouseY = 0.0;
 const speed = 0.2;
-const sensitivity = 0.025 / Math.min(window.innerHeight, window.innerWidth);
+const sensitivity = 0.03 / Math.min(window.innerHeight, window.innerWidth);
 // mesh.geometry.attributes.position.needsUpdate = true;
 // mesh.geometry.attributes.normals.needsUpdate = true;
 
@@ -119,13 +123,7 @@ let theta = 135;
 
 function anim() {
     requestAnimationFrame(anim);
-
-    // camera.rotation.x += 0.1;
-    // mov.cross(camera.up);
-    // let v = new THREE.Vector3();
-    // camera.getWorldDirection(v);
     
-
     if (mouseMove) {
         // camera.rotation.y += (mouseX - ogMouseX) * sensitivity;
         // camera.rotation.x += (mouseY - ogMouseY) * sensitivity * 0.5;
@@ -147,7 +145,7 @@ function anim() {
     // dp = dp.multiply(mov);
     camera.position.add(dp);
 
-    if (simulate && iterations % 15 == 0) {
+    if (simulate && iterations % 5 == 0) {
 
         console.log("Simulating...");
 
@@ -155,7 +153,7 @@ function anim() {
         // let norms = mesh.geometry.getAttribute('normal').array;
         // let poss = mesh.geometry.attributes.position.array;
         // let norms = mesh.geometry.attributes.normal.array;
-        Simulate(size, verts, normals, 1, 0.1);
+        Simulate(size, verts, 1, 0.5, GetBedrock);
 
         mesh.geometry.attributes.position.needsUpdate = true;
         mesh.geometry.attributes.normal.needsUpdate = true;
