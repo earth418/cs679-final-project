@@ -69,8 +69,18 @@ function GetBedrock(a, b) {
 	return 5 * (1 + simplex.noise2D(3.2 + 0.01 * a, 0.3 - 0.01 * b));
 }
 
+// sandGen = function(x, y, hscale, fscale) {
+//     return [0.5 + 1.5 * (1 + simplex.noise2D(x * fscale, y * fscale)), 10];
+// }
+
+// Barchan Dunes
 sandGen = function(x, y, hscale, fscale) {
-    return [5 * (1 + simplex.noise2D(x * fscale, y * fscale)) + GetBedrock(x, y), 10];
+    return [0.5 + 1.5 * Math.random(), 2];
+}
+
+// Transverse Dunes
+sandGen = function(x, y, hscale, fscale) {
+    return [3.0 + 2.0 * Math.random(), 5];
 }
 
 // data = getProcGenData(size, scale, noiseFunc);
@@ -153,7 +163,7 @@ function anim() {
         // let norms = mesh.geometry.getAttribute('normal').array;
         // let poss = mesh.geometry.attributes.position.array;
         // let norms = mesh.geometry.attributes.normal.array;
-        Simulate(size, verts, 1, 0.5, GetBedrock);
+        Simulate(size, verts, 1, 0.5);
 
         mesh.geometry.attributes.position.needsUpdate = true;
         mesh.geometry.attributes.normal.needsUpdate = true;
