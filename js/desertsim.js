@@ -1,4 +1,7 @@
 const wind = new THREE.Vector2(3.0, 0.0);
+
+// const wind = new THREE.Vector2(5.0, 0.0);
+
 let grid = 250;
 let fieldSize = 250.0; // meters
 const tanThresholdAngleSediment = 0.60; // 33deg
@@ -50,10 +53,6 @@ function Clamp(x, a = 0, b = 1) {
 function Lerp(a, b, alpha) {
 	return a + (b - a) * alpha;
 }
-
-// function GetBedrock(a, b) {
-// 	return 2 * (1 + simplex.noise2D(3.2 + 0.01 * a, 0.3 - 0.01 * b));
-// }
 
 function GetSedimentBilinear(vec)
 {
@@ -290,14 +289,12 @@ function IsInShadow(i, j, windDir)
 		Math.sign(windDir.y) * windStepLength
 	);
 
-	// console.log(windStep);
-
 	let p = gridToWorld(new THREE.Vector2(i, j));
 	let pShadow = CopyVec(p);
 	let rShadow = 10.0;
 	let hp = Height(p);
 	let ret = 0.0;
-	// const MAX_ITS = 20;
+	// const MAX_ITS = 5;
 	// let its = 0;
 
 	while (true)
@@ -372,9 +369,9 @@ function IterateOnce() {
 
 	// Wind shadowing probability
 	// console.log(IsInShadow(startI, startJ, windDir));
-	if (Math.random() < IsInShadow(startI, startJ, windDir))
+	if (Math.random() * 1.0 < IsInShadow(startI, startJ, windDir))
 	{
-		// StabilizeSedimentRelative(startI, startJ);
+		StabilizeSedimentRelative(startI, startJ);
 		return;
 	}
 
@@ -404,7 +401,7 @@ function IterateOnce() {
 		p = Math.random();
 
 		// Shadowed cell
-		if (p < IsInShadow(destI, destJ, windDir))
+		if (p * 1.0 < IsInShadow(destI, destJ, windDir))
 		{
 			AddSediment(destI, destJ, matterToMove);
 			break;
@@ -425,18 +422,18 @@ function IterateOnce() {
 		++bounce;
 
 		// Perform reptation at each bounce
-		// PerformReptationOnCell(destI, destJ, bounce);
+		PerformReptationOnCell(destI, destJ, bounce);
 	}
 	// End of the deposition loop - sand moved from (startI, startJ) to (destI, destJ)
 
 	// Perform reptation at the deposition location
-	// PerformReptationOnCell(destI, destJ, bounce);
+	PerformReptationOnCell(destI, destJ, bounce);
 
 	// (4) Check for the angle of repose on the original cell
-	// StabilizeSedimentRelative(startI, startJ);
+	StabilizeSedimentRelative(startI, startJ);
 
 	// (5) Check for the angle of repose on the destination cell if different
-	// StabilizeSedimentRelative(destI, destJ);
+	StabilizeSedimentRelative(destI, destJ);
 }
 
 function Simulate(size, verts, iterations, amtSand) {
@@ -456,7 +453,7 @@ function Simulate(size, verts, iterations, amtSand) {
 
 	grid = size;
 	fieldSize = size;
-	// fieldSize = size * 0.1;
+	// fieldSize = size;
 	cellSize = fieldSize / (size - 1);
 
     for (let its = 0; its < iterations; ++its)
