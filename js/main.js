@@ -16,11 +16,11 @@ document.body.appendChild(renderer.domElement);
 
 // Light
 const light = new THREE.DirectionalLight(0xffaaaa, 1);
-light.position.set(1.0, 1.0, 1.0);
-light.target.position.set(-1.0, 0.0, -1.0);
+light.position.set(0.5, 1.0, 0.5);
+light.target.position.set(0.0, 0.0, 0.0);
 light.castShadow = true;
 
-// scene.add(light.target);
+scene.add(light.target);
 
 scene.add(light);
 
@@ -34,7 +34,7 @@ scene.add(light);
 const geo = new THREE.BufferGeometry();
 
 let size = 250;
-let scale = 2.0;
+let scale = 1.0;
 
 const simplex = new SimplexNoise();
 
@@ -74,9 +74,9 @@ function GetBedrock(a, b) {
 // }
 
 // Barchan Dunes
-sandGen = function(x, y, hscale, fscale) {
-    return [0.5 + 1.5 * Math.random(), 2];
-}
+// sandGen = function(x, y, hscale, fscale) {
+//     return [0.5 + 1.5 * Math.random(), 2];
+// }
 
 // Transverse Dunes
 sandGen = function(x, y, hscale, fscale) {
@@ -135,8 +135,6 @@ function anim() {
     requestAnimationFrame(anim);
     
     if (mouseMove) {
-        // camera.rotation.y += (mouseX - ogMouseX) * sensitivity;
-        // camera.rotation.x += (mouseY - ogMouseY) * sensitivity * 0.5;
         theta += (mouseX - ogMouseX) * sensitivity;
         phi += (mouseY - ogMouseY) * sensitivity * 0.5;
     }
@@ -164,6 +162,10 @@ function anim() {
         // let poss = mesh.geometry.attributes.position.array;
         // let norms = mesh.geometry.attributes.normal.array;
         Simulate(size, verts, 1, 0.5);
+
+        // for (i = 0; i < 300; ++i) 
+        //     for (j = 0; j < 300; ++j)
+        //         colorFromPoint()
 
         mesh.geometry.attributes.position.needsUpdate = true;
         mesh.geometry.attributes.normal.needsUpdate = true;

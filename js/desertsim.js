@@ -1,16 +1,13 @@
 const wind = new THREE.Vector2(3.0, 0.0);
-let grid = 125;
-let fieldSize = 125.0; // meters
+let grid = 250;
+let fieldSize = 250.0; // meters
 const tanThresholdAngleSediment = 0.60; // 33deg
 const tanThresholdAngleWindShadowMin = 0.08; // 5deg
 const tanThresholdAngleWindShadowMax = 0.26; // 15deg
-// float tanThresholdAngleSediment = 0.60f;		// ~33�
-	// float tanThresholdAngleWindShadowMin = 0.08f;	// ~5�
-	// float tanThresholdAngleWindShadowMax = 0.26f;	// ~15�
-	// float tanThresholdAngleBedrock = 2.5f;			// ~68�
 const matterToMove = 0.1;
 const MAX_BOUNCE = 3;
-const cellSize = fieldSize / grid; 
+
+let cellSize = fieldSize / grid; 
 
 // let sediments = new Array(gridX * gridY); // Array<THREE.Vector2>;
 // let bedrock = new Array(grid * grid);
@@ -28,7 +25,12 @@ function AddSediment() {}
 
 function gridToWorld(vec) {
 	vec = Object.assign(new THREE.Vector2(), vec);
-    return vec.multiplyScalar(fieldSize / grid); // new THREE.Vector2(vec.x * fieldSize / gridX, vec.y * fieldSize / gridY);
+    return vec.multiplyScalar(fieldSize / (grid - 1)); // new THREE.Vector2(vec.x * fieldSize / gridX, vec.y * fieldSize / gridY);
+}
+
+function worldToGrid(vec) {
+	vec = Object.assign(new THREE.Vector2(), vec);
+    return vec.multiplyScalar((grid - 1) / fieldSize); // new THREE.Vector2(vec.x * fieldSize / gridX, vec.y * fieldSize / gridY);
 }
 
 function CopyVec(vec) {
@@ -41,7 +43,7 @@ function toIndices(vec) {
 	return [Math.floor(vec.x), Math.floor(vec.y)];
 }
 
-function Clamp(x, a, b) {
+function Clamp(x, a = 0, b = 1) {
 	return x < a ? a : x > b ? b : x;
 }
 
@@ -55,7 +57,9 @@ function Lerp(a, b, alpha) {
 
 function GetSedimentBilinear(vec)
 {
+
 	vec = Object.assign(new THREE.Vector2(), vec);
+	// vec = worldToGrid(vec);
 	// let q = p / fieldSize * gridX;
 	// d = box.Vertex(1) - box.Vertex(0);
 
@@ -98,7 +102,19 @@ function Height(vec) {
 
 function SnapWorld(vec) {
 	vec = Object.assign(new THREE.Vector2(), vec);
-	return new THREE.Vector2(Clamp(vec.x, 0, fieldSize), Clamp(vec.y, 0, fieldSize));
+	
+	if (vec.x < 0)
+		vec.x = fieldSize + vec.x;
+	else if (vec.x >= fieldSize)
+		vec.x = vec.x - fieldSize;
+	
+	if (vec.y < 0)
+		vec.y = fieldSize + vec.y;
+	else if (vec.y >= fieldSize)
+		vec.y = vec.y - fieldSize;
+
+	return vec;
+	// return new THREE.Vector2(Clamp(vec.x, 0, fieldSize), Clamp(vec.y, 0, fieldSize));
 }
 
 function InvLerp(x, a, b)
@@ -144,15 +160,16 @@ function SedimentGradient(xi, yi) {
 let neighbors = [ new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1), new THREE.Vector2(-1, 1), 
 	new THREE.Vector2(-1, 0), new THREE.Vector2(-1, -1), new THREE.Vector2(0, -1), new THREE.Vector2(1, -1) ];
 
-function CheckSedimentFlowRelative(p, tanThresholdAngle)
+function CheckSedimentFlowRelative(i, j, tanThresholdAngle)
 {
-	p = Object.assign(new THREE.Vector2(), p);
+	// p = Object.assign(new THREE.Vector2(), p)
+	let p = new THREE.Vector2(i, j);
 
-	let nei = new Array(8);
-	let nslope = new Array(8);
-	const zp = Height(p);
-	n = 0;
-	slopesum = 0.0;
+	let nei = [];
+	let nslope = [];
+	const zp = GetSediment(i, j);
+	
+	let slopesum = 0.0;
 	for (i = 0; i < 8; i++)
 	{
 		const nv = neighbors[i];
@@ -164,21 +181,22 @@ function CheckSedimentFlowRelative(p, tanThresholdAngle)
 		if (b.x < 0 || b.x >= grid || b.y < 0 || b.y >= grid)
 			continue;
 
-		let step = zp - Height(b);
+		let step = zp - GetSediment(Math.floor(b.x), Math.floor(b.y));
 
-
-		if (step > 0.0 && (step / (fieldSize / grid) * nv.length()) > tanThresholdAngle)
+		if (step > 0.0 && (step / cellSize * nv.length()) > tanThresholdAngle)
 		{
-			nei[n] = CopyVec(b);
-			nslope[n] = step / nv.length();
-			slopesum += nslope[n];
-			n++;
+			nei.push(b);
+			let slope = step / nv.length();
+			nslope.push(slope);
+			slopesum += slope;
 		}
 	}
-	for (k = 0; k < n; k++)
+
+	// normalize
+	for (k = 0; k < nslope.length; k++)
 		nslope[k] = nslope[k] / slopesum;
 
-	return [n, nei, nslope];
+	return [nei, nslope];
 }
 
 function StabilizeSedimentRelative(i, j)
@@ -196,12 +214,13 @@ function StabilizeSedimentRelative(i, j)
 		if (GetSediment(idi, idj) <= 0.0)
 			continue;
 
-		[n, pts, s] = CheckSedimentFlowRelative(current, tanThresholdAngleSediment);
+		[pts, s] = CheckSedimentFlowRelative(idi, idj, tanThresholdAngleSediment);
+		let n = pts.length;
 		if (n == 0)
 			continue;
 
 		// Distribute to neighbours
-		for (a = 0; a < n; a++)
+		for (let a = 0; a < n; a++)
 		{
 			[nIDi, nIDj] = toIndices(pts[a]);
 
@@ -221,15 +240,16 @@ function PerformReptationOnCell(i, j, bounce)
 {
 	// Compute amount of sand to reptate; function of number of bounce.
 	let t = Clamp(bounce, 0, MAX_BOUNCE) / 3.0;
-	let se = matterToMove * (0.5 + t * 0.5); // Lerp(matterToMove / 2.0, matterToMove, t);
+	let se = Lerp(matterToMove / 2.0, matterToMove, t);
 	let rReptationSquared = 2.0 * 2.0; // 2 grid cells
 	let p = gridToWorld(new THREE.Vector2(i, j));
 
 	// Distribute sand at the 2-steepest neighbours
 	// Vector2i nei[8];
-	[n, nei, nslope] = CheckSedimentFlowRelative(new THREE.Vector2(i, j), tanThresholdAngleSediment);
-	n = Math.min(2, n);
+	[nei, nslope] = CheckSedimentFlowRelative(i, j, tanThresholdAngleSediment);
+	let n = Math.min(2, nei.length);
 	let nEffective = 0;
+
 	for (let k = 0; k < n; k++)
 	{
 		let next = CopyVec(nei[k]); // vector 2i
@@ -246,6 +266,7 @@ function PerformReptationOnCell(i, j, bounce)
 
 		// sediments[ToIndex1D(next)] += sei;
 		[nI, nJ] = toIndices(next);
+		// console.log(nI, nJ);
 		AddSediment(nI, nJ, sei);
 
 		// Count the amount of neighbour which received sand from the current cell (i, j)
@@ -269,18 +290,18 @@ function IsInShadow(i, j, windDir)
 		Math.sign(windDir.y) * windStepLength
 	);
 
+	// console.log(windStep);
+
 	let p = gridToWorld(new THREE.Vector2(i, j));
-	// console.log(p);
 	let pShadow = CopyVec(p);
 	let rShadow = 10.0;
 	let hp = Height(p);
 	let ret = 0.0;
-	const MAX_ITS = 20;
-	let its = 0;
+	// const MAX_ITS = 20;
+	// let its = 0;
 
-	while (its < MAX_ITS)
+	while (true)
 	{
-		// console.log(pShadow);
 		pShadow.sub(windStep);
 
 		if (pShadow.equals(p))
@@ -288,27 +309,19 @@ function IsInShadow(i, j, windDir)
 
 		// console.log(pShadow);
 
-		let pShadowSnapped = new THREE.Vector2(Clamp(pShadow.x, 0, grid), Clamp(pShadow.y, 0, grid));
-		// pShadowSnapped = SnapWorld(pShadowSnapped);
+		// let pShadowSnapped = new THREE.Vector2(Clamp(pShadow.x, 0, grid), Clamp(pShadow.y, 0, grid));
+		let pShadowSnapped = SnapWorld(pShadow);
 
-		let dv = CopyVec(p).sub(pShadow);
-		let d = dv.length();
+		let d = CopyVec(p).sub(pShadow).length();
 		if (d > rShadow)
 			break;
 
 		let step = Height(pShadowSnapped) - hp;
 		// console.log(step / d);
 		let s = InvLerp(step / d, tanThresholdAngleWindShadowMin, tanThresholdAngleWindShadowMax);
-
-		// if (s == NaN)
-		// console.log(ret);
-
-		// console.log(s);
 		ret = Math.max(ret, s);
-		++its;
+		// ++its;
 	}
-
-	// console.log("Done.");
 
 	return ret;
 }
@@ -328,14 +341,14 @@ function ComputeWindAtCell(i, j)
 	{
 		// (new THREE.Vector2()).le
 		slope = Clamp(g.length());
-		similarity = Clamp(g.normalize().dot(CopyVec(windDir).normalize()));
+		let normWindDir = CopyVec(windDir).normalize();
+		similarity = Clamp(g.normalize().dot(normWindDir));
 	}
 
 	// Wind velocity is doubled in the best case
 	t = (similarity + slope) / 2.0;
-	windDir.multiplyScalar(1 + t); // Lerp(windDir, 2.0 * windDir, t);
 
-	return windDir;
+	return windDir.multiplyScalar(1 + t); // Lerp(windDir, 2.0 * windDir, t);
 }
 
 function CellInteger(vec) {
@@ -351,6 +364,7 @@ function IterateOnce() {
 	
 	// Compute wind at start cell
 	let windDir = ComputeWindAtCell(startI, startJ);
+	// console.log(windDir);
 
 	// No sediment to move
 	if (GetSediment(startI, startJ) <= 0.0)
@@ -363,21 +377,14 @@ function IterateOnce() {
 		// StabilizeSedimentRelative(startI, startJ);
 		return;
 	}
-	// Vegetation can retain sediments in the lifting process
-	// if (vegetationOn && Random::Uniform() < vegetation[start1D])
-	// {
-	// 	StabilizeSedimentRelative(startI, startJ);
-	// 	return;
-	// }
 
-	// (2) Lift grain at start cell
+	// (Lift grain at start cell
 	// sediments[start1D] -= matterToMove;
 	AddSediment(startI, startJ, -matterToMove);
 
-	// (3) Jump downwind by saltation hop length (wind direction). Repeat until sand is deposited.
+	// Begin jumping loop, repeat until sand is deposited or MAX_BOUNCE is reached
 	let destI = startI;
 	let destJ = startJ;
-	// console.log(destI, destJ);
 	
 	let pos = gridToWorld(new THREE.Vector2(startI, startJ));
 	bounce = 0;
@@ -389,20 +396,9 @@ function IterateOnce() {
 
 		// Compute new world position and new grid position (after wind addition)
 		
-		// console.log(pos);
-		
 		pos.add(windDir);
 		pos = SnapWorld(pos);
 		[destI, destJ] = CellInteger(pos);
-
-		// console.log(destI, destJ);
-
-		// Conversion to 1D index to speed up computation
-		// destID = ToIndex1D(destI, destJ);
-
-		// Abrasion of the bedrock occurs with low sand supply, weak bedrock and a low probability.
-		// if (abrasionOn && Math.random() < 0.2 && GetSediment(destI, destJ) < 0.5)
-		// 	PerformAbrasionOnCell(destI, destJ, windDir);
 
 		// Probability of deposition
 		p = Math.random();
@@ -413,14 +409,14 @@ function IterateOnce() {
 			AddSediment(destI, destJ, matterToMove);
 			break;
 		}
-		// Sandy cell - 60% chance of deposition (if vegetation == 0.0)
-		else if (GetSediment(destI, destJ) > 0.0 && p < 0.6) // + (vegetationOn ? (vegetation.Get(destID) * 0.4) : 0.0))
+		// Sandy cell - 60% chance of deposition 
+		else if (GetSediment(destI, destJ) > 0.0 && p < 0.6) 
 		{
 			AddSediment(destI, destJ, matterToMove);
 			break;
 		}
-		// Empty cell - 40% chance of deposition (if vegetation == 0.0)
-		else if (GetSediment(destI, destJ) <= 0.0 && p < 0.4) // + (vegetationOn ? (vegetation.Get(destID) * 0.6) : 0.0))
+		// Empty cell - 40% chance of deposition 
+		else if (GetSediment(destI, destJ) <= 0.0 && p < 0.4) 
 		{
 			AddSediment(destI, destJ, matterToMove);
 			break;
@@ -429,14 +425,12 @@ function IterateOnce() {
 		++bounce;
 
 		// Perform reptation at each bounce
-
-		PerformReptationOnCell(destI, destJ, bounce);
-
+		// PerformReptationOnCell(destI, destJ, bounce);
 	}
-	// End of the deposition loop - we have move matter from (startI, startJ) to (destI, destJ)
+	// End of the deposition loop - sand moved from (startI, startJ) to (destI, destJ)
 
-	// Perform reptation at the deposition simulationStepCount
-	PerformReptationOnCell(destI, destJ, bounce);
+	// Perform reptation at the deposition location
+	// PerformReptationOnCell(destI, destJ, bounce);
 
 	// (4) Check for the angle of repose on the original cell
 	// StabilizeSedimentRelative(startI, startJ);
@@ -444,8 +438,6 @@ function IterateOnce() {
 	// (5) Check for the angle of repose on the destination cell if different
 	// StabilizeSedimentRelative(destI, destJ);
 }
-
-
 
 function Simulate(size, verts, iterations, amtSand) {
 
@@ -462,8 +454,10 @@ function Simulate(size, verts, iterations, amtSand) {
 		verts[(i * size + j) * 3 + 1] += value;
 	}
 
-	grid = grid = size;
+	grid = size;
 	fieldSize = size;
+	// fieldSize = size * 0.1;
+	cellSize = fieldSize / (size - 1);
 
     for (let its = 0; its < iterations; ++its)
         for (let i = 0; i < size*size; ++i)
