@@ -80,18 +80,18 @@ function GetBedrock(a, b) {
 
 // Transverse Dunes
 sandGen = function(x, y, hscale, fscale) {
-    return [3.0 + 2.0 * Math.random(), 5];
+    return [3.0 + 3 * Math.random(), 6];
 }
 
 // data = getProcGenData(size, scale, noiseFunc);
 data = getProcGenData(size, scale, sandGen);
-verts = new Float32Array(data[0]);
+verts = data[0];
 tris = data[1];
 colors = new Float32Array(data[2]);
 normals = new Float32Array(data[3]);
 
 geo.setIndex(tris);
-geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
 geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
 geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 geo.getAttribute('position').needsUpdate = true;
@@ -159,13 +159,13 @@ function anim() {
 
         // let poss = mesh.geometry.getAttribute('position').array;
         // let norms = mesh.geometry.getAttribute('normal').array;
-        // let poss = mesh.geometry.attributes.position.array;
+        let poss = mesh.geometry.attributes.position.array;
         // let norms = mesh.geometry.attributes.normal.array;
-        Simulate(size, verts, 1, 0.5);
+        Simulate(size, verts);
 
-        // for (i = 0; i < 300; ++i) 
-        //     for (j = 0; j < 300; ++j)
-        //         colorFromPoint()
+        for (i = 0; i < size; ++i) 
+            for (j = 0; j < size; ++j)
+                poss[3 * (i * size + j) + 1] = 4 * verts[3 * (i * size + j) + 1]; 
 
         mesh.geometry.attributes.position.needsUpdate = true;
         mesh.geometry.attributes.normal.needsUpdate = true;

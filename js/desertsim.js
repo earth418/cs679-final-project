@@ -1,6 +1,6 @@
-const wind = new THREE.Vector2(3.0, 0.0);
+// const wind = new THREE.Vector2(3.0, 0.0);
 
-// const wind = new THREE.Vector2(5.0, 0.0);
+const wind = new THREE.Vector2(2.0, 0.0);
 
 let grid = 250;
 let fieldSize = 250.0; // meters
@@ -436,7 +436,7 @@ function IterateOnce() {
 	StabilizeSedimentRelative(destI, destJ);
 }
 
-function Simulate(size, verts, iterations, amtSand) {
+function Simulate(size, verts) {
 
 	GetSediment = function(i, j) {
 		let v = verts[(i * size + j) * 3 + 1];
@@ -452,12 +452,11 @@ function Simulate(size, verts, iterations, amtSand) {
 	}
 
 	grid = size;
-	fieldSize = size;
+	fieldSize = Math.floor(size * 0.5);
 	// fieldSize = size;
 	cellSize = fieldSize / (size - 1);
 
-    for (let its = 0; its < iterations; ++its)
-        for (let i = 0; i < size*size; ++i)
-			IterateOnce();
+	for (let i = 0; i < size*size; ++i)
+		IterateOnce();
 
 }
