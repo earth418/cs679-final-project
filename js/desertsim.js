@@ -1,7 +1,7 @@
 // const wind = new THREE.Vector2(3.0, 0.0);
 
-const wind = new THREE.Vector2(2.0, 0.0);
-
+// const wind = new THREE.Vector2(2.0, 0.0);
+let wind = new THREE.Vector2(2.0, 0.0);
 let grid = 250;
 let fieldSize = 250.0; // meters
 const tanThresholdAngleSediment = 0.60; // 33deg
@@ -436,7 +436,7 @@ function IterateOnce() {
 	StabilizeSedimentRelative(destI, destJ);
 }
 
-function Simulate(size, verts) {
+function Simulate(size, verts, icellSize, iwind) {
 
 	GetSediment = function(i, j) {
 		let v = verts[(i * size + j) * 3 + 1];
@@ -452,9 +452,12 @@ function Simulate(size, verts) {
 	}
 
 	grid = size;
-	fieldSize = Math.floor(size * 0.5);
+	cellSize = icellSize;
+	fieldSize = cellSize * size;
+	wind = iwind;
+
 	// fieldSize = size;
-	cellSize = fieldSize / (size - 1);
+	// cellSize = fieldSize / (size - 1);
 
 	for (let i = 0; i < size*size; ++i)
 		IterateOnce();

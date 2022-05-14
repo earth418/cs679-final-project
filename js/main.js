@@ -31,11 +31,6 @@ scene.add(light);
 
 // Generating geometry
 
-const geo = new THREE.BufferGeometry();
-
-let size = 250;
-let scale = 1.0;
-
 const simplex = new SimplexNoise();
 
 noiseFunc = function(x, y, hscale, fscale) {
@@ -79,39 +74,39 @@ function GetBedrock(a, b) {
 // }
 
 // Transverse Dunes
-sandGen = function(x, y, hscale, fscale) {
-    return [3.0 + 3 * Math.random(), 6];
-}
+// sandGen = function(x, y, hscale, fscale) {
+//     return [landProperties.sandAmount * 0.75 + 0.25 * landProperties.sandAmount * Math.random(), 6];
+// }
 
-// data = getProcGenData(size, scale, noiseFunc);
-data = getProcGenData(size, scale, sandGen);
-verts = data[0];
-tris = data[1];
-colors = new Float32Array(data[2]);
-normals = new Float32Array(data[3]);
+// // data = getProcGenData(size, scale, noiseFunc);
+// let data = getProcGenData(landProperties.size, landProperties.scale, sandGen);
+// let verts = data[0];
+// let tris = data[1];
+// let colors = new Float32Array(data[2]);
+// let normals = new Float32Array(data[3]);
 
-geo.setIndex(tris);
-geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
-geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-geo.getAttribute('position').needsUpdate = true;
-geo.getAttribute('normal').needsUpdate = true;
+// geo.setIndex(tris);
+// geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+// geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+// geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+// geo.getAttribute('position').needsUpdate = true;
+// geo.getAttribute('normal').needsUpdate = true;
 
-const mat = new THREE.MeshStandardMaterial( {
-    side: THREE.DoubleSide,
-    vertexColors: true,
-    flatShading: true
-});
+// const mat = new THREE.MeshStandardMaterial( {
+//     side: THREE.DoubleSide,
+//     vertexColors: true,
+//     flatShading: true
+// });
 
-// Mesh - Scene Component
-const mesh = new THREE.Mesh(geo, mat);
+// // Mesh - Scene Component
+// let mesh = new THREE.Mesh(geo, mat);
 
-mesh.position.x = -scale * size;
-mesh.position.z = -scale * size;
-mesh.castShadow = true;
-mesh.receiveShadow = true;
-
-scene.add(mesh);
+// mesh.position.x = -landProperties.scale * landProperties.size;
+// mesh.position.z = -landProperties.scale * landProperties.size;
+// mesh.castShadow = true;
+// mesh.receiveShadow = true;
+let mesh;
+// scene.add(mesh);
 
 // Constants
 
@@ -130,6 +125,68 @@ let simulate = false;
 let iterations = 0;
 let phi = 0;
 let theta = 135;
+
+let landProperties = {size : 200, scale : 1.0, minSandAmount : 3.0, maxSandAmount : 4.0, wind : new THREE.Vector2(2.0, 1.0), cellSize : 1.0};
+
+let meshStuff = {Rerender : function() {
+
+    sandGen = function(x, y, hscale, fscale) {
+        return [landProperties.minSandAmount + (landProperties.maxSandAmount - landProperties.minSandAmount) * Math.random(), landProperties.maxSandAmount];
+    }
+
+    scene.remove(mesh);
+
+    // verts = [];
+    // tris = [];
+    // colors = [];
+    // normals = [];
+
+    const data = getProcGenData(landProperties.size, landProperties.scale * 0.5, sandGen);
+    verts = new Float32Array(data[0]);
+    tris = data[1];
+    colors = new Float32Array(data[2]);
+    normals = new Float32Array(data[3]);
+    
+    const geo = new THREE.BufferGeometry();
+    
+    geo.setIndex(tris);
+    geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.getAttribute('position').needsUpdate = true;
+    geo.getAttribute('normal').needsUpdate = true;
+    
+    const mat = new THREE.MeshStandardMaterial( {
+        side: THREE.DoubleSide,
+        vertexColors: true,
+        flatShading: true
+    });
+
+    // Mesh - Scene Component
+    mesh = new THREE.Mesh(geo, mat);
+    
+    mesh.position.x = -landProperties.scale * landProperties.size * 0.5;
+    mesh.position.z = -landProperties.scale * landProperties.size * 0.5;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    
+    // if (!scene.children.includes(mesh))
+    scene.add(mesh);
+}};
+
+meshStuff.Rerender();
+
+const gui = new dat.GUI();
+const landFolder = gui.addFolder('Land');
+landFolder.add(landProperties, 'size', 32, 512);
+landFolder.add(landProperties, 'scale', 0.1, 2.0);
+landFolder.add(landProperties, 'cellSize', 0.25, 2.0);
+landFolder.add(landProperties.wind, 'x', -10.0, 10.0);
+landFolder.add(landProperties.wind, 'y', -10.0, 10.0);
+landFolder.add(landProperties, 'minSandAmount', 0.1, 10.0);
+landFolder.add(landProperties, 'maxSandAmount', 0.1, 10.0);
+landFolder.add(meshStuff, 'Rerender');
+landFolder.open();
 
 function anim() {
     requestAnimationFrame(anim);
@@ -161,14 +218,14 @@ function anim() {
         // let norms = mesh.geometry.getAttribute('normal').array;
         let poss = mesh.geometry.attributes.position.array;
         // let norms = mesh.geometry.attributes.normal.array;
-        Simulate(size, verts);
+        Simulate(landProperties.size, poss, landProperties.cellSize, landProperties.wind);
 
-        for (i = 0; i < size; ++i) 
-            for (j = 0; j < size; ++j)
-                poss[3 * (i * size + j) + 1] = 4 * verts[3 * (i * size + j) + 1]; 
+        // for (i = 0; i < landProperties.size; ++i) 
+        //     for (j = 0; j < landProperties.size; ++j)
+        //         poss[3 * (i * landProperties.size + j) + 1] = 4 * verts[3 * (i * landProperties.size + j) + 1]; 
 
         mesh.geometry.attributes.position.needsUpdate = true;
-        mesh.geometry.attributes.normal.needsUpdate = true;
+        // mesh.geometry.attributes.normal.needsUpdate = true;
     }
 
     ++iterations;
